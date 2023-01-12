@@ -19,7 +19,7 @@ gg_miss_var(covid.data)
 
 #Replacing the missing values with certain data
 ##Since I won't be using all the variables in the dataset, I will be only replacing the missing values of certain variables
-##creating functions that replace the missing values with 0, mean and median
+##creating functions that replace the missing values with 0 and mean
 replace.zero <- function(z) +
   replace(z, is.na(z), 0)
 
@@ -27,7 +27,7 @@ replace.mean <- function(x) +
   replace(x, is.na(x), mean(x, na.rm =T))
 
 
-covid.data1 <- ddply(covid.data, ~location, transform,
+covid.data <- ddply(covid.data, ~location, transform,
                      new_cases = replace.zero(new_cases),
                      total_cases = replace.zero(total_cases),
                      new_deaths = replace.zero(new_deaths),
@@ -43,4 +43,7 @@ covid.data1 <- ddply(covid.data, ~location, transform,
                      male_smokers = replace.mean(male_smokers),
                      female_smokers = replace.mean(female_smokers),
                      population = replace.mean(population))
+
+#changing date variable into date format
+covid.data$date <- as.Date(covid.data$date, format = "%d/%m/%Y")
 
