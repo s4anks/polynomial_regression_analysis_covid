@@ -11,6 +11,12 @@ library(data.table)           #for fread()
 library(plyr)
 library(scales)
 library(jtools)               #for theme_apa()
+library(cowplot)
+library(lubridate)
+library(crosstable)
+library(kableExtra)
+library(flextable)
+library(DT)
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -129,20 +135,63 @@ covid.cases <- covid %>%
 #             locations = ~iso_code,
 #             marker = list(line = line))
 
-#Plotting the world covid cases
-covid.cases.deaths <- covid %>%
+#summary statistics
+by(covid$new_cases, covid$continent, summary)
+# by(covid$new_deaths, covid$continent, summary)
+#creating month column
+year.month <- covid %>%
+  mutate(Month = as.character(lubridate::month(date)),
+         Year = lubridate::year(date)) %>%
+  select(location, Year, Month, new_cases, new_deaths)
+
+#recoding the month column
+year.month$Month <- recode(month$Month, 
+                      "1" = "January",
+                      "2" = "February",
+                      "3" = "March",
+                      "4" = "April",
+                      "5" = "May",
+                      "6" = "June", 
+                      "7" = "July",
+                      "8" = "August",
+                      "9" = "September",
+                      "10" = "October",
+                      "11" = "November",
+                      "12" = "December")
+#covid %>%
+ # filter(location == "Afghanistan") %>%
+  #summarize(total_cases = sum(total_cases))
+
+covid_summary_statistics <- year.month %>%
+  group_by(location, Month, Year) %>%
+  dplyr::summarise(Total.Deaths = sum(new_deaths, na.rm = T),
+         Total.Cases = sum(new_cases, na.rm = T),
+         Mean.cases.per.day = round(mean(new_cases, na.rm =T),2),
+         Mean.deaths.per.day = round(mean(new_deaths, na.rm =T),2))
+
+covid_summary_statistics %>%
+  select(location, Year, Month, Total.Cases, Total.Deaths, Mean.cases.per.day, Mean.deaths.per.day) %>%
+  datatable(
+    rownames = F,
+    class = "cell-border stripe",
+    colnames = c("Country", "Year", "Month", "Total cases", "Total Deaths", "Mean cases per day", "Mean Deaths per day"),
+    caption = "Country wise COVID-19 Cases and Deaths",
+    options = list(columnDefs = list(list(className = "dt-center", targets = 0:1)))
+  )
+
+#Trend of world covid cases and deaths
+covid %>%
   group_by(date) %>%
   filter(date != day_latest) %>%
   dplyr::summarise(total_deaths = sum(total_deaths, na.rm = T), 
-                   total_cases = sum(total_cases, na.rm = T), .groups = "drop")
-
-ggplot(covid.cases.deaths, aes(x = date)) +
+                   total_cases = sum(total_cases, na.rm = T), .groups = "drop") %>%
+  ggplot(aes(x = date)) +
   geom_line(aes(y = total_cases + 1), color = "#2e9449", linewidth = 1) +
   geom_line(aes(y = total_deaths + 1), linewidth = 1, linetype = 2, color = "#9c2742") +
   scale_y_continuous(trans = "log10", labels = comma) +
   scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
   labs(title = "Global COVID infections and deaths",
-       subtitle = "Till May 2022",
+       subtitle = paste0("Till ", day_latest - 1),
        x = "",
        y = "Log10 transformation") +
   theme_apa() +
@@ -155,5 +204,47 @@ ggplot(covid.cases.deaths, aes(x = date)) +
   annotate("text", x = as.Date("2021-05-05"), y = 1000000, label = "Total Deaths \n", size = 4.2) +
   annotate("text", x = as.Date("2021-05-05"), y = 50000000, label = "Total Cases \n", size = 4.2)
 
+#Trend of new covid cases in different continents
+p1 <- covid %>%
+  group_by(date, continent) %>%
+  dplyr::summarise(new_covid_cases = sum(new_cases, na.rm = T), .groups = "drop") %>%
+  ggplot(aes(date)) +
+  geom_col(aes(y = new_covid_cases, color = continent)) +
+  labs(
+    title = "Trend of New COVID-19 cases in different continents",
+    subtitle = paste0("Till ", day_latest - 1),
+    y = "",
+    x = ""
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "",
+    axis.text.x = element_text(angle = 90, hjust = 0.6)
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "6 months") +
+  facet_wrap(~continent)
+p1
 
-  
+#Trend of new covid deaths in different continents
+p2 <- covid %>%
+  group_by(date, continent) %>%
+  dplyr::summarise(new_covid_deaths = sum(new_deaths, na.rm = T), .groups = "drop") %>%
+  ggplot(aes(date)) +
+  geom_col(aes(y = new_covid_deaths, color = continent)) +
+  labs(
+    title = "Trend of New COVID-19 deaths in different continents",
+    subtitle = paste0("Till ", day_latest - 1),
+    y = "",
+    x = ""
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "",
+    axis.text.x = element_text(angle = 90, hjust = 0.6)
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "6 months") +
+  facet_wrap(~continent)
+p2
+#plot_grid(p1, p2)  
+
+
