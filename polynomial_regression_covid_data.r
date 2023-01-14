@@ -1,8 +1,16 @@
-https://mdl.library.utoronto.ca/technology/tutorials/covid-19-data-r
+#https://mdl.library.utoronto.ca/technology/tutorials/covid-19-data-r
 
 #Loading libraries
-pacman::p_load(ggplot2, tidyverse, dplyr, corrplot, naniar, plotly, data.table, plyr)
-#data.table package for fread() function
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(corrplot)
+library(naniar)
+library(plotly)
+library(data.table)           #for fread()
+library(plyr)
+library(scales)
+library(jtools)               #for theme_apa()
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -47,77 +55,105 @@ covid.data <- ddply(covid.data, ~location, transform,
                      population = replace.mean(population))
 
 #changing date variable into date format
-covid.data$date <- as.Date(covid.data$date, format = "%d/%m/%Y")
+covid.data$date <- as.Date(covid.data$date, format = "%Y-%m-%d")
 
 #Removing continents from country column
 continents <- c("Asia", "Africa", "European Union", "Europe", "High income", "Lower middle income", "Low Income", "Upper middle income", 'Oceania', "South America", "North America", "International", "World")
-covid.data <- subset(covid.data, !(location %in% continents))
+covid <- subset(covid.data, !(location %in% continents))
+
+#Removing the blank spaces from continent column
+covid <- subset(covid, !(continent == ""))
 
 #latest day
-day_latest <- max(covid.data$date)
+day_latest <- max(covid$date)
 
 #creating heatmaps
-covid.cases <- covid.data %>%
+covid.cases <- covid %>%
   group_by(location) %>%
   filter(date == max(date))
 
 ##creating covid cases heat maps
-line <- list(color = toRGB("#d1d1d1"), width = 0.4)
-heatmap <- list(
-  showframe = F,
-  showcoastlines = F,
-  projection = list(type = "orthographic"),
-  resolution = "100",
-  showcountries = T,
-  countrycolor = "#d1d1d1",
-  showocean = T,
-  oceancolor = '#064273',
-  showlakes = T,
-  lakecolor = '#99c0db',
-  showrivers = T,
-  rivercolor = '#99c0db',
-  bgcolor = '#e8f7fc')
+# line <- list(color = toRGB("#d1d1d1"), width = 0.4)
+# heatmap <- list(
+#   showframe = F,
+#   showcoastlines = F,
+#   projection = list(type = "orthographic"),
+#   resolution = "100",
+#   showcountries = T,
+#   countrycolor = "#d1d1d1",
+#   showocean = T,
+#   oceancolor = '#064273',
+#   showlakes = T,
+#   lakecolor = '#99c0db',
+#   showrivers = T,
+#   rivercolor = '#99c0db',
+#   bgcolor = '#e8f7fc')
+# 
+# plot_geo() %>%
+#   layout(geo = heatmap,
+#          paper_bgcolor = '#e8f7fc',
+#          title = paste0("World COVID-19 Confirmed Cases till ",  day_latest)) %>%
+#   add_trace(data = covid.cases,
+#             z = ~total_cases,
+#             colors = "Reds",
+#             text = ~location,
+#             locations = ~iso_code,
+#             marker = list(line = line))
+# 
+# ##Heatmap for covid deaths
+# plot_geo() %>%
+#   layout(geo = heatmap,
+#          paper_bgcolor = '#e8f7fc',
+#          title = paste0("World COVID-19 deaths till ",  day_latest)) %>%
+#   add_trace(data = covid.cases,
+#             z = ~total_deaths,
+#             colors = "Reds",
+#             text = ~location,
+#             locations = ~iso_code,
+#             marker = list(line = line))
+# 
+# ##Heatmap for COVID vaccination status
+# covid.vaccination <- covid %>%
+#   group_by(location) %>%
+#   filter(people_fully_vaccinated == max(people_fully_vaccinated)) %>%
+#   select(date, location, people_fully_vaccinated, iso_code)
+# 
+# plot_geo() %>%
+#   layout(geo = heatmap,
+#          paper_bgcolor = '#e8f7fc',
+#          title = paste0("Vaccination status till ",  day_latest)) %>%
+#   add_trace(data = covid.vaccination,
+#             z = ~people_fully_vaccinated,
+#             colors = "Reds",
+#             text = ~location,
+#             locations = ~iso_code,
+#             marker = list(line = line))
 
-plot_geo() %>%
-  layout(geo = heatmap,
-         paper_bgcolor = '#e8f7fc',
-         title = paste0("World COVID-19 Confirmed Cases till ",  day_latest)) %>%
-  add_trace(data = covid.cases,
-            z = ~total_cases,
-            colors = "Reds",
-            text = ~location,
-            locations = ~iso_code,
-            marker = list(line = line))
+#Plotting the world covid cases
+covid.cases.deaths <- covid %>%
+  group_by(date) %>%
+  filter(date != day_latest) %>%
+  dplyr::summarise(total_deaths = sum(total_deaths, na.rm = T), 
+                   total_cases = sum(total_cases, na.rm = T), .groups = "drop")
 
-##Heatmap for covid deaths
-plot_geo() %>%
-  layout(geo = heatmap,
-         paper_bgcolor = '#e8f7fc',
-         title = paste0("World COVID-19 deaths till ",  day_latest)) %>%
-  add_trace(data = covid.cases,
-            z = ~total_deaths,
-            colors = "Reds",
-            text = ~location,
-            locations = ~iso_code,
-            marker = list(line = line))
+ggplot(covid.cases.deaths, aes(x = date)) +
+  geom_line(aes(y = total_cases + 1), color = "#2e9449", linewidth = 1) +
+  geom_line(aes(y = total_deaths + 1), linewidth = 1, linetype = 2, color = "#9c2742") +
+  scale_y_continuous(trans = "log10", labels = comma) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+  labs(title = "Global COVID infections and deaths",
+       subtitle = "Till May 2022",
+       x = "",
+       y = "Log10 transformation") +
+  theme_apa() +
+  theme(axis.text.x = element_text(angle = 90, color = "black", hjust = 1),
+        axis.text = element_text(color = "black")) +
+  geom_vline(xintercept = as.Date("2020-03-11"), linetype = "longdash", linewidth = 0.8, col = "black") +
+  annotate("text", x = as.Date("2020-03-10"), y = 11100, label = "WHO announces pandemic \n", size = 4.2, angle = 90) +
+  geom_vline(xintercept = as.Date("2020-01-30"), linetype = "longdash", linewidth = 0.8, col = "black") +
+  annotate("text", x = as.Date("2020-01-20"), y = 16100, label = "Global health emergency declared \n", size = 4.2, angle = 90) +
+  annotate("text", x = as.Date("2021-05-05"), y = 1000000, label = "Total Deaths \n", size = 4.2) +
+  annotate("text", x = as.Date("2021-05-05"), y = 50000000, label = "Total Cases \n", size = 4.2)
 
-##Heatmap for COVID vaccination status
-covid.vaccination <- covid.data %>%
-  group_by(location) %>%
-  #filter(date == max(date)) %>%
-  mutate(people_fully_vaccinated = max(people_fully_vaccinated, na.rm = T)) %>%
-  select(date, location, people_fully_vaccinated) %>%
-  filter(date == max(date))
 
-plot_geo() %>%
-  layout(geo = heatmap,
-         paper_bgcolor = '#e8f7fc',
-         title = paste0("Vaccination status till ",  day_latest)) %>%
-  add_trace(data = covid.vaccination,
-            z = ~people_fully_vaccinated,
-            colors = "Reds",
-            text = ~location,
-            locations = ~iso_code,
-            marker = list(line = line))
   
-
