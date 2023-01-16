@@ -15,8 +15,8 @@ library(cowplot)
 library(lubridate)
 library(crosstable)
 library(kableExtra)
-library(flextable)
 library(DT)
+library(treemapify)
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -136,16 +136,14 @@ covid.cases <- covid %>%
 #             marker = list(line = line))
 
 #summary statistics
-by(covid$new_cases, covid$continent, summary)
-# by(covid$new_deaths, covid$continent, summary)
 #creating month column
 year.month <- covid %>%
   mutate(Month = as.character(lubridate::month(date)),
          Year = lubridate::year(date)) %>%
-  select(location, Year, Month, new_cases, new_deaths)
+  select(continent, location, Year, Month, new_cases, new_deaths)
 
 #recoding the month column
-year.month$Month <- recode(month$Month, 
+year.month$Month <- recode(year.month$Month, 
                       "1" = "January",
                       "2" = "February",
                       "3" = "March",
@@ -186,8 +184,8 @@ covid %>%
   dplyr::summarise(total_deaths = sum(total_deaths, na.rm = T), 
                    total_cases = sum(total_cases, na.rm = T), .groups = "drop") %>%
   ggplot(aes(x = date)) +
-  geom_line(aes(y = total_cases + 1), color = "#2e9449", linewidth = 1) +
-  geom_line(aes(y = total_deaths + 1), linewidth = 1, linetype = 2, color = "#9c2742") +
+  geom_line(aes(y = total_cases + 1), color = "#2e9449", linewidth = 1.5) +
+  geom_line(aes(y = total_deaths + 1), linewidth = 1.5, linetype = 2, color = "#9c2742") +
   scale_y_continuous(trans = "log10", labels = comma) +
   scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
   labs(title = "Global COVID infections and deaths",
@@ -228,7 +226,7 @@ p1
 #Trend of new covid deaths in different continents
 p2 <- covid %>%
   group_by(date, continent) %>%
-  dplyr::summarise(new_covid_deaths = sum(new_deaths, na.rm = T), .groups = "drop") %>%
+  dplyr::summarise(new_covid_deaths = sum(new_deaths, na.rm = T)) %>% 
   ggplot(aes(date)) +
   geom_col(aes(y = new_covid_deaths, color = continent)) +
   labs(
@@ -245,6 +243,22 @@ p2 <- covid %>%
   scale_x_date(date_labels = "%b %Y", date_breaks = "6 months") +
   facet_wrap(~continent)
 p2
-#plot_grid(p1, p2)  
+
+#COVID cases by months
+treemap.month <- year.month %>%
+  group_by(Month, continent) %>%
+  dplyr::summarise(total.cases = sum(new_cases, na.rm = T))
+
+treemapcoord.month <- treemapify(treemap.month, 
+                                 area = "total.cases",
+                                 fill = "Month",
+                                 label = "continent",
+                                 subgroup = "Month")
+
+ggplotify(scale_x_continuous(expand = c(0,0)) +
+              scale_y_continuous(expand = c(0,0)) +
+              scale_fill_brewer(palette = "Dark2"))
+
+?treemapify
 
 
