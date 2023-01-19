@@ -1,5 +1,7 @@
 #https://mdl.library.utoronto.ca/technology/tutorials/covid-19-data-r
 
+options(scipen=999)
+
 #Loading libraries
 library(ggplot2)
 library(tidyverse)
@@ -16,7 +18,7 @@ library(lubridate)
 library(crosstable)
 library(kableExtra)
 library(DT)
-library(treemapify)
+library(treemap)
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -78,47 +80,47 @@ covid.cases <- covid %>%
   group_by(location) %>%
   filter(date == max(date))
 
-##creating covid cases heat maps
-# line <- list(color = toRGB("#d1d1d1"), width = 0.4)
-# heatmap <- list(
-#   showframe = F,
-#   showcoastlines = F,
-#   projection = list(type = "orthographic"),
-#   resolution = "100",
-#   showcountries = T,
-#   countrycolor = "#d1d1d1",
-#   showocean = T,
-#   oceancolor = '#064273',
-#   showlakes = T,
-#   lakecolor = '#99c0db',
-#   showrivers = T,
-#   rivercolor = '#99c0db',
-#   bgcolor = '#e8f7fc')
-# 
-# plot_geo() %>%
-#   layout(geo = heatmap,
-#          paper_bgcolor = '#e8f7fc',
-#          title = paste0("World COVID-19 Confirmed Cases till ",  day_latest)) %>%
-#   add_trace(data = covid.cases,
-#             z = ~total_cases,
-#             colors = "Reds",
-#             text = ~location,
-#             locations = ~iso_code,
-#             marker = list(line = line))
-# 
-# ##Heatmap for covid deaths
-# plot_geo() %>%
-#   layout(geo = heatmap,
-#          paper_bgcolor = '#e8f7fc',
-#          title = paste0("World COVID-19 deaths till ",  day_latest)) %>%
-#   add_trace(data = covid.cases,
-#             z = ~total_deaths,
-#             colors = "Reds",
-#             text = ~location,
-#             locations = ~iso_code,
-#             marker = list(line = line))
-# 
-# ##Heatmap for COVID vaccination status
+#creating covid cases heat maps
+line <- list(color = toRGB("#d1d1d1"), width = 0.4)
+heatmap <- list(
+  showframe = F,
+  showcoastlines = F,
+  projection = list(type = "orthographic"),
+  resolution = "100",
+  showcountries = T,
+  countrycolor = "#d1d1d1",
+  showocean = T,
+  oceancolor = '#064273',
+  showlakes = T,
+  lakecolor = '#99c0db',
+  showrivers = T,
+  rivercolor = '#99c0db',
+  bgcolor = '#e8f7fc')
+
+plot_geo() %>%
+  layout(geo = ,
+         paper_bgcolor = '#e8f7fc',
+         title = paste0("World COVID-19 Confirmed Cases till ",  day_latest)) %>%
+  add_trace(data = covid.cases,
+            z = ~total_cases,
+            colors = "Reds",
+            text = ~location,
+            locations = ~iso_code,
+            marker = list(line = line))
+
+##Heatmap for covid deaths
+plot_geo() %>%
+  layout(geo = heatmap,
+         paper_bgcolor = '#e8f7fc',
+         title = paste0("World COVID-19 deaths till ",  day_latest)) %>%
+  add_trace(data = covid.cases,
+            z = ~total_deaths,
+            colors = "Reds",
+            text = ~location,
+            locations = ~iso_code,
+            marker = list(line = line))
+
+##Heatmap for COVID vaccination status
 # covid.vaccination <- covid %>%
 #   group_by(location) %>%
 #   filter(people_fully_vaccinated == max(people_fully_vaccinated)) %>%
@@ -245,20 +247,25 @@ p2 <- covid %>%
 p2
 
 #COVID cases by months
-treemap.month <- year.month %>%
+treemap.month.df <- year.month %>%
   group_by(Month, continent) %>%
-  dplyr::summarise(total.cases = sum(new_cases, na.rm = T))
+  dplyr::summarise(total.cases = sum(new_cases, na.rm = T)) %>%
+  ggplot(aes(x = Month)) +
+  geom_col(aes(y = total.cases)) +
+  scale_y_continuous(labels = comma) +
+  labs(x = "",
+       y = "Total Number of Cases",
+       title = "COVID-19 cases in different continents in different months",
+       subtitle = paste0("Till ", day_latest - 1)) +
+  geom_vline(xintercept = max(total.cases)), linetype = "longdash", linewidth = 0.8, col = "black") +
+  annotate("text", x = max(total.cases), y = 11100, label = "Peak COVID cases", size = 4.2, angle = 90) +
+  theme_bw() +
+  theme(axis.text.x = element_text (angle = 90, vjust = 0.25)) +
+  facet_wrap(~continent)
+treemap.month.df  
 
-treemapcoord.month <- treemapify(treemap.month, 
-                                 area = "total.cases",
-                                 fill = "Month",
-                                 label = "continent",
-                                 subgroup = "Month")
 
-ggplotify(scale_x_continuous(expand = c(0,0)) +
-              scale_y_continuous(expand = c(0,0)) +
-              scale_fill_brewer(palette = "Dark2"))
 
-?treemapify
+
 
 
