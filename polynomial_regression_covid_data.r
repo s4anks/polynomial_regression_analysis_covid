@@ -19,6 +19,7 @@ library(crosstable)
 library(kableExtra)
 library(DT)
 library(treemap)
+library(forcats)
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -98,9 +99,9 @@ heatmap <- list(
   bgcolor = '#e8f7fc')
 
 plot_geo() %>%
-  layout(geo = ,
+  layout(geo = heatmap,
          paper_bgcolor = '#e8f7fc',
-         title = paste0("World COVID-19 Confirmed Cases till ",  day_latest)) %>%
+         title = paste0("World COVID-19 Confirmed Cases till ", day_latest)) %>%
   add_trace(data = covid.cases,
             z = ~total_cases,
             colors = "Reds",
@@ -218,7 +219,7 @@ p1 <- covid %>%
   ) +
   theme_bw() +
   theme(
-    legend.position = "",
+    legend.position = "none",
     axis.text.x = element_text(angle = 90, hjust = 0.6)
   ) +
   scale_x_date(date_labels = "%b %Y", date_breaks = "6 months") +
@@ -239,33 +240,82 @@ p2 <- covid %>%
   ) +
   theme_bw() +
   theme(
-    legend.position = "",
+    legend.position = "none",
     axis.text.x = element_text(angle = 90, hjust = 0.6)
   ) +
-  scale_x_date(date_labels = "%b %Y", date_breaks = "6 months") +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
   facet_wrap(~continent)
 p2
+                                   
 
 #COVID cases by months
-treemap.month.df <- year.month %>%
+month.df <- year.month %>%
   group_by(Month, continent) %>%
-  dplyr::summarise(total.cases = sum(new_cases, na.rm = T)) %>%
-  ggplot(aes(x = Month)) +
-  geom_col(aes(y = total.cases)) +
-  scale_y_continuous(labels = comma) +
-  labs(x = "",
-       y = "Total Number of Cases",
-       title = "COVID-19 cases in different continents in different months",
-       subtitle = paste0("Till ", day_latest - 1)) +
-  geom_vline(xintercept = max(total.cases)), linetype = "longdash", linewidth = 0.8, col = "black") +
-  annotate("text", x = max(total.cases), y = 11100, label = "Peak COVID cases", size = 4.2, angle = 90) +
+  dplyr::summarise(total.cases = sum(new_cases, na.rm = T))
+
+month.df$Month <- factor(month.df$Month, levels=c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
+
+p3<-ggplot(month.df, aes(x = Month, y = total.cases)) +
+  geom_col() +
+  facet_wrap(~continent) +
   theme_bw() +
-  theme(axis.text.x = element_text (angle = 90, vjust = 0.25)) +
-  facet_wrap(~continent)
-treemap.month.df  
+  theme(axis.text.x = element_text(angle = 90, vjust=0.2),
+        axis.text = element_text(size = 9, color = "black")) +
+  labs(
+    x = "",
+    y = "Total Cases",
+    title = "COVID - 19 cases in different continents in different months",
+    subtitle = paste0("Till ", day_latest-0)
+  ) +
+  scale_y_continuous(label = comma)
+p3
+ggplotly(p3)
 
+#Top 10 countries with most covid cases
+top.10.covid.countries <- covid %>%
+  select(location, new_cases, date) %>%
+  group_by(location) %>%
+  dplyr::summarise(total.cases = sum(new_cases, na.rm = T)) %>%
+  top_n(10, total.cases) %>%
+  arrange(desc(total.cases)) %>%
+  mutate(country.reordered = fct_reorder(location, total.cases))
 
+p4 <- top.10.covid.countries %>%
+  ggplot(aes(country.reordered, total.cases)) +
+  geom_col() +
+  geom_text(aes(label=total.cases), hjust = -0.1, size = 3) +
+  scale_y_continuous(label = comma) +
+  labs(
+    x = "Total Cases",
+    y = "",
+    title = "Top 10 countries with highest COVID-19 infections",
+    subtitle = paste0("Till ", day_latest-1)
+  ) +
+  theme_bw() +
+  coord_flip()
+p4
 
+#Top 10 countries with most COVID-19 deaths
+top.10.covid.deaths.countries <- covid %>%
+  select(date, location, new_deaths) %>%
+  group_by(location) %>%
+  dplyr::summarise(total.deaths = sum(new_deaths, na.rm = T)) %>%
+  top_n(10, total.deaths) %>%
+  arrange(desc(location)) %>%
+  mutate(country.reordered = fct_reorder(location, total.deaths))
+p5 <- top.10.covid.deaths.countries %>%
+  ggplot(aes(country.reordered, total.deaths)) +
+  geom_col() +
+  geom_text(aes(label = total.deaths), hjust = -0.1, size = 3) +
+  scale_y_continuous(label = comma) +
+  labs(x = "",
+       y = "Total Deaths",
+       title = "Top 10 countries with most COVID-19 deaths",
+       subtitle = paste0("Till ", day_latest-1)) +
+  theme_bw() +
+  coord_flip()
+p5
 
-
+    
+  
 
