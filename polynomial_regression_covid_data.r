@@ -18,7 +18,7 @@ library(lubridate)
 library(crosstable)
 library(kableExtra)
 library(DT)
-library(treemap)
+library(caret)                #for createdatapartition()
 library(forcats)
 
 #Importing datasets
@@ -354,7 +354,6 @@ p5
 
 #Selecting certain columns of covid.data 
 covid.data_corr <- covid %>%
-  group_by(location) %>%
   select(new_cases, new_deaths, tests_per_case, people_fully_vaccinated, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers, icu_patients, hosp_patients)
 
 #Plotting the correlation matrix
@@ -370,3 +369,17 @@ corrplot(cor, method = 'color',
          tl.srt=90,  #Text label rotation
          diag = FALSE,
          sig.level = 0.01, insig = "blank")
+
+#Polynomial regression model
+#Splitting dataset for regression model
+set.seed(123)
+training.samples <- covid$new_deaths %>%
+  createDataPartition(p = 0.75, list = FALSE)
+train.data  <- covid[training.samples, ]
+test.data <- covid[-training.samples, ]
+
+#Fitting a polynomial regression model for the deaths due to covid
+
+model1 <- lm(total_deaths ~ total_cases + icu_patients, data = train.data)
+summary(model1)
+plot(model1, 1)
