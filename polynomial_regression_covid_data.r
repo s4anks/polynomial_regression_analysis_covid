@@ -319,18 +319,35 @@ p5 <- top.10.covid.deaths.countries %>%
 p5
 
 #Scatter plot between covid cases and deaths
-p6 <- covid %>%
-  select(continent, date, new_deaths, new_cases, location) %>%
-  group_by(location, continent) %>%
-  dplyr::summarise(total.cases = sum(new_cases, na.rm = T),
-                   total.deaths = sum(new_deaths, na.rm = T)) %>%
-  ggplot(aes(total.cases, total.deaths)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = F) +
-  labs(
-    x = "Total Cases",
-    y = "Total Deaths",
-    title = "Scatter plot of total cases vs deaths"
-  ) +
-  theme_bw()
-p6
+# p6 <- covid %>%
+#   select(continent, date, new_deaths, new_cases, location) %>%
+#   group_by(location, continent) %>%
+#   dplyr::summarise(total.cases = sum(new_cases, na.rm = T),
+#                    total.deaths = sum(new_deaths, na.rm = T)) %>%
+#   ggplot(aes(total.cases, total.deaths)) +
+#   geom_point(alpha = 0.6) +
+#   geom_smooth(method = "lm", se = F) +
+#   labs(
+#     x = "Total Cases",
+#     y = "Total Deaths",
+#     title = "Scatter plot of total cases vs deaths"
+#   ) +
+#   theme_bw()
+# p6
+
+#Selecting certain columns of covid_world 
+covid_world_corr <- covid %>%
+  select(new_cases, new_deaths, tests_per_case, new_vaccinations, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers, icu_patients, hosp_patients)
+colSums(is.na(covid_world_corr))
+#Plotting the correlation matrix
+cor <- cor(covid_world_corr)
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(cor, method = 'color', 
+         type = "upper", #Displays only upper part of the matrix
+         order = "hclust",
+         col=col(200),
+         addCoef.col = "black",  #Add coeffiecient of correlation
+         tl.col="black",  #Text label color
+         tl.srt=90,  #Text label rotation
+         diag = FALSE,
+         sig.level = 0.01, insig = "blank")
