@@ -61,7 +61,9 @@ covid.data <- ddply(covid.data, ~location, transform,
                      handwashing_facilities = replace.mean(handwashing_facilities),
                      male_smokers = replace.mean(male_smokers),
                      female_smokers = replace.mean(female_smokers),
-                     population = replace.mean(population))
+                     population = replace.mean(population),
+                    icu_patients = replace.zero(icu_patients),
+                    hosp_patients = replace.zero(hosp_patients))
 
 #changing date variable into date format
 covid.data$date <- as.Date(covid.data$date, format = "%Y-%m-%d")
@@ -316,6 +318,19 @@ p5 <- top.10.covid.deaths.countries %>%
   coord_flip()
 p5
 
-    
-  
-
+#Scatter plot between covid cases and deaths
+p6 <- covid %>%
+  select(continent, date, new_deaths, new_cases, location) %>%
+  group_by(location, continent) %>%
+  dplyr::summarise(total.cases = sum(new_cases, na.rm = T),
+                   total.deaths = sum(new_deaths, na.rm = T)) %>%
+  ggplot(aes(total.cases, total.deaths)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = F) +
+  labs(
+    x = "Total Cases",
+    y = "Total Deaths",
+    title = "Scatter plot of total cases vs deaths"
+  ) +
+  theme_bw()
+p6
