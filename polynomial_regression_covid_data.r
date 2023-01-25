@@ -1,4 +1,5 @@
 #https://mdl.library.utoronto.ca/technology/tutorials/covid-19-data-r
+#https://www.simplilearn.com/tutorials/data-science-tutorial/linear-regression-in-r
 
 options(scipen=999)
 
@@ -20,6 +21,7 @@ library(kableExtra)
 library(DT)
 library(caret)                #for createdatapartition()
 library(forcats)
+library(olsrr)                #for ols test
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -370,16 +372,17 @@ corrplot(cor, method = 'color',
          diag = FALSE,
          sig.level = 0.01, insig = "blank")
 
-#Polynomial regression model
-#Splitting dataset for regression model
+#Time series analysis
+nepal.df <- covid %>%
+  filter(location == "Nepal")
+  # mutate(log_new_cases = log(new_cases + 1),
+  #        log_new_deaths = log(new_deaths + 1)) %>%
+  # select(log_new_deaths, log_new_cases)
+  # 
+
 set.seed(123)
-training.samples <- covid$new_deaths %>%
+training.samples <- nepal.df$new_deaths %>%
   createDataPartition(p = 0.75, list = FALSE)
-train.data  <- covid[training.samples, ]
-test.data <- covid[-training.samples, ]
+train.data <- nepal.df[training.samples, ]
 
-#Fitting a polynomial regression model for the deaths due to covid
 
-model1 <- lm(total_deaths ~ total_cases + icu_patients, data = train.data)
-summary(model1)
-plot(model1, 1)
