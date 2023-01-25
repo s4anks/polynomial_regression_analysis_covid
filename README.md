@@ -1,1 +1,1 @@
-# Polynomial-Regression-on-covid-dataset
+#ARIMA model
