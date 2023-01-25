@@ -39,31 +39,48 @@ gg_miss_var(covid.data)
 #Replacing the missing values with certain data
 ##Since I won't be using all the variables in the dataset, I will be only replacing the missing values of certain variables
 ##creating functions that replace the missing values with 0 and mean
-replace.zero <- function(z) +
-  replace(z, is.na(z), 0)
+# replace.zero <- function(z) +
+#   replace(z, is.na(z), 0)
+# 
+# replace.mean <- function(x) +
+#   replace(x, is.na(x), mean(x, na.rm =T))
 
-replace.mean <- function(x) +
-  replace(x, is.na(x), mean(x, na.rm =T))
+# covid.data <- ddply(covid.data, ~location, transform,
+#                      new_cases = replace.zero(new_cases),
+#                      total_cases = replace.zero(total_cases),
+#                      new_deaths = replace.zero(new_deaths),
+#                      total_deaths = replace.zero(total_deaths),
+#                      tests_per_case = replace.zero(tests_per_case),
+#                      people_fully_vaccinated = replace.zero(people_fully_vaccinated),
+#                      population_density = replace.mean(population_density),
+#                      median_age = replace.mean(median_age),
+#                      gdp_per_capita = replace.mean(gdp_per_capita),
+#                      extreme_poverty = replace.mean(extreme_poverty),
+#                      human_development_index = replace.mean(human_development_index),
+#                      handwashing_facilities = replace.mean(handwashing_facilities),
+#                      male_smokers = replace.mean(male_smokers),
+#                      female_smokers = replace.mean(female_smokers),
+#                      population = replace.mean(population),
+#                     icu_patients = replace.zero(icu_patients),
+#                     hosp_patients = replace.zero(hosp_patients))
 
-
-covid.data <- ddply(covid.data, ~location, transform,
-                     new_cases = replace.zero(new_cases),
-                     total_cases = replace.zero(total_cases),
-                     new_deaths = replace.zero(new_deaths),
-                     total_deaths = replace.zero(total_deaths),
-                     tests_per_case = replace.zero(tests_per_case),
-                     people_fully_vaccinated = replace.zero(people_fully_vaccinated),
-                     population_density = replace.mean(population_density),
-                     median_age = replace.mean(median_age),
-                     gdp_per_capita = replace.mean(gdp_per_capita),
-                     extreme_poverty = replace.mean(extreme_poverty),
-                     human_development_index = replace.mean(human_development_index),
-                     handwashing_facilities = replace.mean(handwashing_facilities),
-                     male_smokers = replace.mean(male_smokers),
-                     female_smokers = replace.mean(female_smokers),
-                     population = replace.mean(population),
-                    icu_patients = replace.zero(icu_patients),
-                    hosp_patients = replace.zero(hosp_patients))
+covid.data$new_cases[is.na(covid.data$new_cases)] <- 0
+covid.data$total_cases[is.na(covid.data$total_cases)] <- 0
+covid.data$new_deaths[is.na(covid.data$new_deaths)] <- 0
+covid.data$total_deaths[is.na(covid.data$total_deaths)] <- 0
+covid.data$tests_per_case[is.na(covid.data$tests_per_case)] <- 0
+covid.data$people_fully_vaccinated[is.na(covid.data$people_fully_vaccinated)] <- 0
+covid.data$population_density[is.na(covid.data$population_density)] <- mean(covid.data$population_density, na.rm = TRUE)
+covid.data$median_age[is.na(covid.data$median_age)] <- mean(covid.data$median_age, na.rm = TRUE)
+covid.data$gdp_per_capita[is.na(covid.data$gdp_per_capita)] <- mean(covid.data$gdp_per_capita, na.rm = TRUE)
+covid.data$extreme_poverty[is.na(covid.data$extreme_poverty)] <- mean(covid.data$extreme_poverty, na.rm = TRUE)
+covid.data$human_development_index[is.na(covid.data$human_development_index)] <- mean(covid.data$human_development_index, na.rm = TRUE)
+covid.data$handwashing_facilities[is.na(covid.data$handwashing_facilities)] <- mean(covid.data$handwashing_facilities, na.rm = TRUE)
+covid.data$male_smokers[is.na(covid.data$male_smokers)] <- mean(covid.data$male_smokers, na.rm = TRUE)
+covid.data$female_smokers[is.na(covid.data$female_smokers)] <- mean(covid.data$female_smokers, na.rm = TRUE)
+covid.data$population[is.na(covid.data$population)] <- mean(covid.data$population, na.rm = TRUE)
+covid.data$icu_patients[is.na(covid.data$icu_patients)] <- 0
+covid.data$hosp_patients[is.na(covid.data$hosp_patients)] <- 0
 
 #changing date variable into date format
 covid.data$date <- as.Date(covid.data$date, format = "%Y-%m-%d")
@@ -319,18 +336,37 @@ p5 <- top.10.covid.deaths.countries %>%
 p5
 
 #Scatter plot between covid cases and deaths
-p6 <- covid %>%
-  select(continent, date, new_deaths, new_cases, location) %>%
-  group_by(location, continent) %>%
-  dplyr::summarise(total.cases = sum(new_cases, na.rm = T),
-                   total.deaths = sum(new_deaths, na.rm = T)) %>%
-  ggplot(aes(total.cases, total.deaths)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = F) +
-  labs(
-    x = "Total Cases",
-    y = "Total Deaths",
-    title = "Scatter plot of total cases vs deaths"
-  ) +
-  theme_bw()
-p6
+# p6 <- covid %>%
+#   select(continent, date, new_deaths, new_cases, location) %>%
+#   group_by(location, continent) %>%
+#   dplyr::summarise(total.cases = sum(new_cases, na.rm = T),
+#                    total.deaths = sum(new_deaths, na.rm = T)) %>%
+#   ggplot(aes(total.cases, total.deaths)) +
+#   geom_point(alpha = 0.6) +
+#   geom_smooth(method = "lm", se = F) +
+#   labs(
+#     x = "Total Cases",
+#     y = "Total Deaths",
+#     title = "Scatter plot of total cases vs deaths"
+#   ) +
+#   theme_bw()
+# p6
+
+#Selecting certain columns of covid.data 
+covid.data_corr <- covid %>%
+  group_by(location) %>%
+  select(new_cases, new_deaths, tests_per_case, people_fully_vaccinated, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers, icu_patients, hosp_patients)
+
+#Plotting the correlation matrix
+cor <- cor(covid.data_corr)
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(cor, method = 'color', 
+         type = "upper", #Displays only upper part of the matrix
+         order = "hclust",
+         col=col(200),
+         addCoef.col = "black",  #Add coeffiecient of correlation
+         number.cex = 0.8,
+         tl.col="black",  #Text label color
+         tl.srt=90,  #Text label rotation
+         diag = FALSE,
+         sig.level = 0.01, insig = "blank")
