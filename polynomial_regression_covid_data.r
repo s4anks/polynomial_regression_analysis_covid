@@ -1,5 +1,5 @@
 #https://mdl.library.utoronto.ca/technology/tutorials/covid-19-data-r
-#https://www.simplilearn.com/tutorials/data-science-tutorial/linear-regression-in-r
+#https://rpubs.com/khusniank/SMAADWprac2
 
 options(scipen=999)
 
@@ -21,7 +21,7 @@ library(kableExtra)
 library(DT)
 library(caret)                #for createdatapartition()
 library(forcats)
-library(olsrr)                #for ols test
+library(TTR)                  #for SMA() 
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -72,18 +72,13 @@ covid.data$new_deaths[is.na(covid.data$new_deaths)] <- 0
 covid.data$total_deaths[is.na(covid.data$total_deaths)] <- 0
 covid.data$tests_per_case[is.na(covid.data$tests_per_case)] <- 0
 covid.data$people_fully_vaccinated[is.na(covid.data$people_fully_vaccinated)] <- 0
-covid.data$population_density[is.na(covid.data$population_density)] <- mean(covid.data$population_density, na.rm = TRUE)
-covid.data$median_age[is.na(covid.data$median_age)] <- mean(covid.data$median_age, na.rm = TRUE)
-covid.data$gdp_per_capita[is.na(covid.data$gdp_per_capita)] <- mean(covid.data$gdp_per_capita, na.rm = TRUE)
-covid.data$extreme_poverty[is.na(covid.data$extreme_poverty)] <- mean(covid.data$extreme_poverty, na.rm = TRUE)
-covid.data$human_development_index[is.na(covid.data$human_development_index)] <- mean(covid.data$human_development_index, na.rm = TRUE)
-covid.data$handwashing_facilities[is.na(covid.data$handwashing_facilities)] <- mean(covid.data$handwashing_facilities, na.rm = TRUE)
-covid.data$male_smokers[is.na(covid.data$male_smokers)] <- mean(covid.data$male_smokers, na.rm = TRUE)
-covid.data$female_smokers[is.na(covid.data$female_smokers)] <- mean(covid.data$female_smokers, na.rm = TRUE)
-covid.data$population[is.na(covid.data$population)] <- mean(covid.data$population, na.rm = TRUE)
 covid.data$icu_patients[is.na(covid.data$icu_patients)] <- 0
 covid.data$hosp_patients[is.na(covid.data$hosp_patients)] <- 0
+covid.data$new_tests[is.na(covid.data$new_tests)] <- 0
+covid.data$reproduction_rate[is.na(covid.data$reproduction_rate)] <- 0
 
+
+str(covid.data)
 #changing date variable into date format
 covid.data$date <- as.Date(covid.data$date, format = "%Y-%m-%d")
 
@@ -355,8 +350,18 @@ p5
 # p6
 
 #Selecting certain columns of covid.data 
+data_sample %>% 
+  group_by(group) %>% 
+  mutate_at(vars(x1,x2,x3), 
+            ~replace_na(., 
+                        mean(., na.rm = TRUE)))
+
 covid.data_corr <- covid %>%
-  select(new_cases, new_deaths, tests_per_case, people_fully_vaccinated, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers, icu_patients, hosp_patients)
+  group_by(location) %>%
+  mutate_at(vars(population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, male_smokers, female_smokers, icu_patients, hosp_patients),
+            ~replace_na(.,
+                        mean(., na.rm = T))) %>%
+  select(new_cases, new_deaths, new_tests, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers, icu_patients, hosp_patients)
 
 #Plotting the correlation matrix
 cor <- cor(covid.data_corr)
@@ -372,17 +377,17 @@ corrplot(cor, method = 'color',
          diag = FALSE,
          sig.level = 0.01, insig = "blank")
 
-#Time series analysis
+#Polynomial Regression model
 nepal.df <- covid %>%
-  filter(location == "Nepal")
-  # mutate(log_new_cases = log(new_cases + 1),
-  #        log_new_deaths = log(new_deaths + 1)) %>%
-  # select(log_new_deaths, log_new_cases)
-  # 
+  filter(location == "Nepal") %>%
+  select(date, new_tests, new_cases, new_deaths, stringency_index, reproduction_rate, population)
 
-set.seed(123)
-training.samples <- nepal.df$new_deaths %>%
-  createDataPartition(p = 0.75, list = FALSE)
-train.data <- nepal.df[training.samples, ]
+train.data <- nepal.df %>%
+  filter(date <= "2022-3-31")
+test.data <- nepal.df %>%
+  filter(date > "2022-4-1")
+
+model <- lm(new_cases ~ poly(new_tests,3) + stringency_index, data = train.data)
+summary(model)
 
 
