@@ -22,6 +22,7 @@ library(DT)
 library(caret)                #for createdatapartition()
 library(forcats)
 library(TTR)                  #for SMA() 
+library(tidyr)
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -40,31 +41,29 @@ gg_miss_var(covid.data)
 
 #Replacing the missing values with certain data
 ##Since I won't be using all the variables in the dataset, I will be only replacing the missing values of certain variables
-covid.data$new_cases[is.na(covid.data$new_cases)] <- 0
-covid.data$total_cases[is.na(covid.data$total_cases)] <- 0
-covid.data$new_deaths[is.na(covid.data$new_deaths)] <- 0
-covid.data$total_deaths[is.na(covid.data$total_deaths)] <- 0
-covid.data$tests_per_case[is.na(covid.data$tests_per_case)] <- 0
-covid.data$people_fully_vaccinated[is.na(covid.data$people_fully_vaccinated)] <- 0
-covid.data$icu_patients[is.na(covid.data$icu_patients)] <- 0
-covid.data$hosp_patients[is.na(covid.data$hosp_patients)] <- 0
-covid.data$new_tests[is.na(covid.data$new_tests)] <- 0
-covid.data$reproduction_rate[is.na(covid.data$reproduction_rate)] <- 0
-covid1 <- covid.data %>%
-  group_by(location) %>%
-  mutate_at(vars(population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, male_smokers, female_smokers, icu_patients, hosp_patients),
+covid.data1 <- covid.data %>%
+  mutate_at(vars(new_cases, total_cases, new_deaths, total_deaths, tests_per_case, new_tests, reproduction_rate, icu_patients, hosp_patients, people_fully_vaccinated),
             ~replace_na(.,
-                        mean(., na.rm = T))) %>%
-  select(median_age, extreme_poverty)
+                        0)) %>%
+  group_by(location) %>%
+  mutate(human_development_index = replace_na(human_development_index, mean(human_development_index, na.rm = T)),
+         population_density = replace_na(population_density, mean(population_density, na.rm = T)),
+         gdp_per_capita = replace_na(gdp_per_capita, mean(gdp_per_capita, na.rm = T)),
+         extreme_poverty = replace_na(extreme_poverty, mean(extreme_poverty, na.rm = T)),
+         male_smokers = replace_na(male_smokers, mean(male_smokers, na.rm = T)),
+         female_smokers = replace_na(female_smokers, mean(female_smokers, na.rm = T)),
+         icu_patients = replace_na(icu_patients, mean(icu_patients, na.rm = T)),
+         hosp_patients = replace_na(hosp_patients, mean(hosp_patients, na.rm = T)),
+         handwashing_facilities = replace_na(handwashing_facilities, mean(handwashing_facilities, na.rm = T)),
+         median_age = replace_na(median_age, mean(median_age, na.rm = T)))
 
-
-colSums(is.na(covid.data))
+colSums(is.na(covid.data1))
 #changing date variable into date format
-covid.data$date <- as.Date(covid.data$date, format = "%Y-%m-%d")
+covid.data1$date <- as.Date(covid.data1$date, format = "%Y-%m-%d")
 
 #Removing continents from country column
 continents <- c("Asia", "Africa", "European Union", "Europe", "High income", "Lower middle income", "Low Income", "Upper middle income", 'Oceania', "South America", "North America", "International", "World")
-covid <- subset(covid.data, !(location %in% continents))
+covid <- subset(covid.data1, !(location %in% continents))
 
 #Removing the blank spaces from continent column
 covid <- subset(covid, !(continent == ""))
@@ -330,17 +329,12 @@ p5
 # p6
 
 #Selecting certain columns of covid.data 
-data_sample %>% 
-  group_by(group) %>% 
-  mutate_at(vars(x1,x2,x3), 
-            ~replace_na(., 
-                        mean(., na.rm = TRUE)))
-
-covid.data_corr <- covid %>%
-  select(new_cases, new_deaths, new_tests, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers, icu_patients, hosp_patients)
+covid.data.corr <- covid %>%
+  ungroup(location) %>%
+  select(new_cases, new_deaths, tests_per_case, new_tests, reproduction_rate, icu_patients, hosp_patients, human_development_index, gdp_per_capita, extreme_poverty, male_smokers, female_smokers, handwashing_facilities)
 
 #Plotting the correlation matrix
-cor <- cor(covid.data_corr)
+cor <- cor(covid.data.corr)
 col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
 corrplot(cor, method = 'color', 
          type = "upper", #Displays only upper part of the matrix
@@ -356,7 +350,7 @@ corrplot(cor, method = 'color',
 #Polynomial Regression model
 nepal.df <- covid %>%
   filter(location == "Nepal") %>%
-  select(date, new_tests, new_cases, new_deaths, stringency_index, reproduction_rate, population)
+  select(date, new_tests, new_cases, new_deaths, stringency_index, reproduction_rate, population, tests_per_case)
 
 train.data <- nepal.df %>%
   filter(date <= "2022-3-31")
