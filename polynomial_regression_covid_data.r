@@ -55,7 +55,9 @@ covid.data1 <- covid.data %>%
          icu_patients = replace_na(icu_patients, mean(icu_patients, na.rm = T)),
          hosp_patients = replace_na(hosp_patients, mean(hosp_patients, na.rm = T)),
          handwashing_facilities = replace_na(handwashing_facilities, mean(handwashing_facilities, na.rm = T)),
-         median_age = replace_na(median_age, mean(median_age, na.rm = T)))
+         median_age = replace_na(median_age, mean(median_age, na.rm = T)),
+         stringency_index = replace_na(stringency_index, mean(stringency_index, na.rm = T))) %>%
+  ungroup()
 
 colSums(is.na(covid.data1))
 #changing date variable into date format
@@ -330,7 +332,6 @@ p5
 
 #Selecting certain columns of covid.data 
 covid.data.corr <- covid %>%
-  ungroup(location) %>%
   select(new_cases, new_deaths, tests_per_case, new_tests, reproduction_rate, icu_patients, hosp_patients, human_development_index, gdp_per_capita, extreme_poverty, male_smokers, female_smokers, handwashing_facilities)
 
 #Plotting the correlation matrix
@@ -350,14 +351,31 @@ corrplot(cor, method = 'color',
 #Polynomial Regression model
 nepal.df <- covid %>%
   filter(location == "Nepal") %>%
-  select(date, new_tests, new_cases, new_deaths, stringency_index, reproduction_rate, population, tests_per_case)
+  select(date, new_tests, new_cases, stringency_index)
 
-train.data <- nepal.df %>%
-  filter(date <= "2022-3-31")
-test.data <- nepal.df %>%
-  filter(date > "2022-4-1")
+
+set.seed(123)
+train_indices <- createDataPartition(nepal.df$new_cases, times=1, p=.8, list=FALSE)
+
+#create training set
+train.data <- nepal.df[train_indices , ]
+
+#create testing set
+test.data  <- nepal.df[-train_indices, ]
+# train.data <- nepal.df %>%
+#   filter(date <= "2022-3-31") 
+# test.data <- nepal.df %>%
+#   filter(date > "2022-4-1")
 
 model <- lm(new_cases ~ poly(new_tests,3) + stringency_index, data = train.data)
 summary(model)
 
+predicted.new.cases <- predict(model, test.data)
+predicted.new.cases
+predic.actual <- cbind(test.data, predicted.new.cases)
+predic.actual %>%
+  ggplot(aes(predicted.new.cases, new_cases)) +
+  geom_point()
+effect_plot(model, pred = new_tests, interval = T, plot.points = T)
+#https://cran.r-project.org/web/packages/jtools/vignettes/effect_plot.html
 
