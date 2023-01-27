@@ -40,32 +40,6 @@ gg_miss_var(covid.data)
 
 #Replacing the missing values with certain data
 ##Since I won't be using all the variables in the dataset, I will be only replacing the missing values of certain variables
-##creating functions that replace the missing values with 0 and mean
-# replace.zero <- function(z) +
-#   replace(z, is.na(z), 0)
-# 
-# replace.mean <- function(x) +
-#   replace(x, is.na(x), mean(x, na.rm =T))
-
-# covid.data <- ddply(covid.data, ~location, transform,
-#                      new_cases = replace.zero(new_cases),
-#                      total_cases = replace.zero(total_cases),
-#                      new_deaths = replace.zero(new_deaths),
-#                      total_deaths = replace.zero(total_deaths),
-#                      tests_per_case = replace.zero(tests_per_case),
-#                      people_fully_vaccinated = replace.zero(people_fully_vaccinated),
-#                      population_density = replace.mean(population_density),
-#                      median_age = replace.mean(median_age),
-#                      gdp_per_capita = replace.mean(gdp_per_capita),
-#                      extreme_poverty = replace.mean(extreme_poverty),
-#                      human_development_index = replace.mean(human_development_index),
-#                      handwashing_facilities = replace.mean(handwashing_facilities),
-#                      male_smokers = replace.mean(male_smokers),
-#                      female_smokers = replace.mean(female_smokers),
-#                      population = replace.mean(population),
-#                     icu_patients = replace.zero(icu_patients),
-#                     hosp_patients = replace.zero(hosp_patients))
-
 covid.data$new_cases[is.na(covid.data$new_cases)] <- 0
 covid.data$total_cases[is.na(covid.data$total_cases)] <- 0
 covid.data$new_deaths[is.na(covid.data$new_deaths)] <- 0
@@ -76,9 +50,15 @@ covid.data$icu_patients[is.na(covid.data$icu_patients)] <- 0
 covid.data$hosp_patients[is.na(covid.data$hosp_patients)] <- 0
 covid.data$new_tests[is.na(covid.data$new_tests)] <- 0
 covid.data$reproduction_rate[is.na(covid.data$reproduction_rate)] <- 0
+covid1 <- covid.data %>%
+  group_by(location) %>%
+  mutate_at(vars(population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, male_smokers, female_smokers, icu_patients, hosp_patients),
+            ~replace_na(.,
+                        mean(., na.rm = T))) %>%
+  select(median_age, extreme_poverty)
 
 
-str(covid.data)
+colSums(is.na(covid.data))
 #changing date variable into date format
 covid.data$date <- as.Date(covid.data$date, format = "%Y-%m-%d")
 
@@ -357,10 +337,6 @@ data_sample %>%
                         mean(., na.rm = TRUE)))
 
 covid.data_corr <- covid %>%
-  group_by(location) %>%
-  mutate_at(vars(population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, male_smokers, female_smokers, icu_patients, hosp_patients),
-            ~replace_na(.,
-                        mean(., na.rm = T))) %>%
   select(new_cases, new_deaths, new_tests, population_density, median_age, gdp_per_capita, extreme_poverty, human_development_index, handwashing_facilities, male_smokers, female_smokers, icu_patients, hosp_patients)
 
 #Plotting the correlation matrix
