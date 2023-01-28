@@ -331,6 +331,48 @@ corrplot(cor, method = 'color',
          diag = FALSE,
          sig.level = 0.01, insig = "blank")
 
+#Scatter plots
+## covid cases vs HDI
+p6 <- covid %>%
+  filter(date == max(day_latest - 1)) %>%
+  select(total_cases, human_development_index, location, continent) %>%
+  mutate(location = factor(location)) %>%
+  ggplot(aes(human_development_index, total_cases/1000, size = total_cases, color = continent)) +
+  geom_point(aes(text = location), alpha = 0.5) +
+  scale_size(range=c(1,10), name = "") +
+  theme_bw() +
+  labs(
+    x = "Human Development Index",
+    y = "Total cases in thousands"
+  )
+   
+ggplotly(p6, tooltip = c("text", "total_cases", "human_development_index")) %>%
+  layout(title = list(text = paste0('Total Covid cases in different countries',
+                                    '<br>',
+                                    '<sup>',
+                                    'Size of scatter plot denotes the covid cases','</sup>')),
+         margin = list(t = 70))
+
+## covid deaths vs HDI
+p7 <- covid %>%
+  filter(date == max(day_latest - 1)) %>%
+  select(total_deaths, human_development_index, location, continent) %>%
+  mutate(location = factor(location)) %>%
+  ggplot(aes(human_development_index, total_deaths/1000, size = total_deaths, color = continent)) +
+  geom_point(aes(text = location), alpha = 0.5) +
+  scale_size(range=c(1,10), name = "") +
+  theme_bw() +
+  labs(
+    x = "Human Development Index",
+    y = "Total deaths in thousands"
+  )
+ 
+ggplotly(p7, tooltip = c("text", "total_deaths", "human_development_index")) %>%
+  layout(title = list(text = paste0('Total Covid deaths in different countries',
+                                    '<br>',
+                                    '<sup>',
+                                    'Size of scatter plot denotes the covid deaths','</sup>')),
+         margin = list(t = 70))
 #Polynomial Regression model
 nepal.df <- covid %>%
   filter(location == "Nepal") %>%
@@ -366,7 +408,7 @@ summary(model)
 # }
 # 
 # residplot(model)
-
+# pg 200
 
 effect_plot(model, pred = new_tests, interval = T, plot.points = T)
 #https://cran.r-project.org/web/packages/jtools/vignettes/effect_plot.html
