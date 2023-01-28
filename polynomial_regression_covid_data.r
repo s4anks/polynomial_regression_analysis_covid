@@ -313,23 +313,6 @@ p5 <- top.10.covid.deaths.countries %>%
   coord_flip()
 p5
 
-#Scatter plot between covid cases and deaths
-# p6 <- covid %>%
-#   select(continent, date, new_deaths, new_cases, location) %>%
-#   group_by(location, continent) %>%
-#   dplyr::summarise(total.cases = sum(new_cases, na.rm = T),
-#                    total.deaths = sum(new_deaths, na.rm = T)) %>%
-#   ggplot(aes(total.cases, total.deaths)) +
-#   geom_point(alpha = 0.6) +
-#   geom_smooth(method = "lm", se = F) +
-#   labs(
-#     x = "Total Cases",
-#     y = "Total Deaths",
-#     title = "Scatter plot of total cases vs deaths"
-#   ) +
-#   theme_bw()
-# p6
-
 #Selecting certain columns of covid.data 
 covid.data.corr <- covid %>%
   select(new_cases, new_deaths, tests_per_case, new_tests, reproduction_rate, icu_patients, hosp_patients, human_development_index, gdp_per_capita, extreme_poverty, male_smokers, female_smokers, handwashing_facilities)
@@ -351,31 +334,40 @@ corrplot(cor, method = 'color',
 #Polynomial Regression model
 nepal.df <- covid %>%
   filter(location == "Nepal") %>%
-  select(date, new_tests, new_cases, stringency_index)
+  select(new_tests, new_cases, stringency_index)
+plot(nepal.df$new_tests, nepal.df$new_cases)
 
+#Identifying the outliers position in new_tests
+out <- boxplot.stats(nepal.df$new_tests)$out
+out_ind <- which(nepal.df$new_tests %in% c(out))
+out_ind
+str(nepal.df)
+#Removing the outliers
+nepal.df1 <- nepal.df[-out_ind,]
+str(nepal.df1)
 
-set.seed(123)
-train_indices <- createDataPartition(nepal.df$new_cases, times=1, p=.8, list=FALSE)
-
-#create training set
-train.data <- nepal.df[train_indices , ]
-
-#create testing set
-test.data  <- nepal.df[-train_indices, ]
-# train.data <- nepal.df %>%
-#   filter(date <= "2022-3-31") 
-# test.data <- nepal.df %>%
-#   filter(date > "2022-4-1")
-
-model <- lm(new_cases ~ poly(new_tests,3) + stringency_index, data = train.data)
+#Regression model
+model <- lm(new_cases ~ poly(new_tests,3), data = nepal.df1)
 summary(model)
 
-predicted.new.cases <- predict(model, test.data)
-predicted.new.cases
-predic.actual <- cbind(test.data, predicted.new.cases)
-predic.actual %>%
-  ggplot(aes(predicted.new.cases, new_cases)) +
-  geom_point()
+# residplot <- function(fit, nbreaks=10) {
+#   z <- rstudent(fit)
+#   hist(z, breaks=nbreaks, freq=FALSE,
+#        xlab="Studentized Residual",
+#        main="Distribution of Errors")
+#   rug(jitter(z), col="brown")
+#   curve(dnorm(x, mean=mean(z), sd=sd(z)),
+#         add=TRUE, col="blue", lwd=2)
+#   lines(density(z)$x, density(z)$y,
+#         col="red", lwd=2, lty=2)
+#   legend("topright",
+#          legend = c( "Normal Curve", "Kernel Density Curve"),
+#          lty=1:2, col=c("blue","red"), cex=.7)
+# }
+# 
+# residplot(model)
+
+
 effect_plot(model, pred = new_tests, interval = T, plot.points = T)
 #https://cran.r-project.org/web/packages/jtools/vignettes/effect_plot.html
-
+#https://stats.stackexchange.com/questions/233007/interpreting-effects-plots-in-r
