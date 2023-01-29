@@ -13,7 +13,6 @@ library(plotly)
 library(data.table)           #for fread()
 library(plyr)
 library(scales)
-library(jtools)               #for theme_apa()
 library(cowplot)
 library(lubridate)
 library(crosstable)
@@ -248,13 +247,14 @@ p2
 #COVID cases by months
 month.df <- year.month %>%
   group_by(Month, continent) %>%
-  dplyr::summarise(total.cases = sum(new_cases, na.rm = T))
+  dplyr::summarise(total.cases = sum(new_cases, na.rm = T),
+                   total.deaths = sum(new_deaths, na.rm = T))
 
 month.df$Month <- factor(month.df$Month, levels=c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
 
-p3<-ggplot(month.df, aes(x = Month, y = total.cases)) +
-  geom_col() +
-  facet_wrap(~continent) +
+p3<-ggplot(month.df, aes(x = Month, y = total.cases, fill = continent)) +
+  geom_col(position = "dodge") +
+  # facet_wrap(~continent) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust=0.2),
         axis.text = element_text(size = 9, color = "black")) +
@@ -264,8 +264,8 @@ p3<-ggplot(month.df, aes(x = Month, y = total.cases)) +
     title = "COVID - 19 cases in different continents in different months",
     subtitle = paste0("Till ", day_latest-0)
   ) +
-  scale_y_continuous(label = comma)
-p3
+  scale_y_continuous(label = comma) +
+  coord_flip()
 ggplotly(p3)
 
 #Top 10 countries with most covid cases
@@ -373,6 +373,106 @@ ggplotly(p7, tooltip = c("text", "total_deaths", "human_development_index")) %>%
                                     '<sup>',
                                     'Size of scatter plot denotes the covid deaths','</sup>')),
          margin = list(t = 70))
+
+## covid cases vs covid deaths
+p8 <- covid %>%
+  filter(date == max(day_latest - 1),
+         location != "North Korea") %>%
+  select(total_deaths, total_cases, location, continent) %>%
+  mutate(location = factor(location),
+         infection_fatality_rate = (total_deaths/total_cases)*100) %>%
+  ggplot(aes(total_cases/1000, total_deaths/1000, size = infection_fatality_rate, color = continent)) +
+  geom_point(aes(text = location), alpha = 0.45) +
+  scale_size(range=c(1,10), name = "") +
+  theme_bw() +
+  labs(
+    x = "Total cases in thousands",
+    y = "Total deaths in thousands"
+  )
+
+ggplotly(p8, tooltip = "all") %>%
+  layout(title = list(text = paste0('Total Covid cases vs total deaths in different countries',
+                                    '<br>',
+                                    '<sup>',
+                                    'Size of bubble is based on infection fatality rate','<br>',
+                                    'Infection mortality rate vary depending on fairness of reported covid cases and deaths', '</sup>')),
+         margin = list(t = 100))
+
+#In Nepal?
+##total cases and total deaths
+covid.nepal <- covid %>%
+  filter(location == "Nepal") %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = total_cases + 1), color = "#2e9449", linewidth = 1) +
+  geom_line(aes(y = total_deaths + 1), linewidth = 1, linetype = 2, color = "#9c2742") +
+  scale_y_continuous(trans = "log10", labels = comma) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+  labs(title = "Global COVID infections and deaths",
+       subtitle = paste0("Till ", day_latest - 1),
+       x = "",
+       y = "Log10 transformation") +
+  theme_apa() +
+  theme(axis.text.x = element_text(angle = 90, color = "black", hjust = 1),
+        axis.text = element_text(color = "black")) +
+  annotate("text", x = as.Date("2021-05-05"), y = 9000, label = "Total Deaths \n", size = 3.8) +
+  annotate("text", x = as.Date("2021-05-05"), y = 450000, label = "Total Cases \n", size = 3.8)  
+  
+ggplotly(covid.nepal) %>%
+  layout(title = list(text = paste0('Global COVID infections and deaths',
+                                    '<br>',
+                                    '<sup>',
+                                    paste0('TIll ',day_latest-1),'</sup>')),
+         margin = list(t = 50))
+
+##data manipulation for trend of new cases and new deaths in nepal
+covid.nepal1 <- covid %>%
+  filter(location == "Nepal") %>%
+  mutate(new.cases.smoothed  = as.integer(SMA(new_cases, n = 14)),
+         new.deaths.smoothed = as.integer(SMA(new_deaths, n = 14))) %>%     #as.integer is used to convert numbers with decimals into integers
+  select(date, new.cases.smoothed, new.deaths.smoothed) %>%
+  filter(date > "2020-02-06")     #To remove rows with NAs induced due to smoothing (14 days simple moving average)
+
+covid.nepal1 %>%
+  filter(new.deaths.smoothed == 190)
+
+##trend of new covid cases in nepal
+p9 <- covid.nepal1 %>%
+  ggplot(aes(date, new.cases.smoothed)) +
+  geom_line(linewidth = 1, color = "#2C8C33") +
+  labs(x = "",
+       y = "Number of new cases",
+       title = "Trend of New Covid infections in Nepal (14-days smoothed)",
+       subtitle = paste0("Till ", day_latest - 1)) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90)
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+  annotate(geom="text", x=as.Date("2022-03-15"), y=8289, 
+           label="Per day new covid cases reached\nmaximum i.e. 8,589", size = 3.5) +
+  annotate(geom="point", x=as.Date("2021-05-18"), y=8589, size=6, shape=21, fill="transparent")
+
+p9
+
+## trend of new covid deaths in nepal
+p10 <- covid.nepal1 %>%
+  ggplot(aes(date, new.deaths.smoothed)) +
+  geom_line(linewidth = 1, color = "#CF5C5C") +
+  labs(x = "",
+       y = "Number of new deaths",
+       title = "Trend of New Covid related deaths in Nepal (14-days smoothed)",
+       subtitle = paste0("Till ", day_latest - 1)) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 90)
+  ) +
+  scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") +
+  annotate(geom="text", x=as.Date("2022-03-25"), y=185, 
+           label="Per day new covid deaths reached\nmaximum i.e. 190", size = 3.5) +
+  annotate(geom="point", x=as.Date("2021-05-24"), y=189, size=6, shape=21, fill="transparent")
+
+p10
+
 #Polynomial Regression model
 nepal.df <- covid %>%
   filter(location == "Nepal") %>%
