@@ -22,6 +22,7 @@ library(caret)                #for createdatapartition()
 library(forcats)
 library(TTR)                  #for SMA() 
 library(tidyr)
+library(jtools)               #for effect_plot()
 
 #Importing datasets
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
@@ -97,7 +98,7 @@ heatmap <- list(
 plot_geo() %>%
   layout(geo = heatmap,
          paper_bgcolor = '#e8f7fc',
-         title = paste0("World COVID-19 Confirmed Cases till ", day_latest)) %>%
+         title = paste0("World COVID-19 Confirmed Cases till ", day_latest-1)) %>%
   add_trace(data = covid.cases,
             z = ~total_cases,
             colors = "Reds",
@@ -489,27 +490,27 @@ nepal.df1 <- nepal.df[-out_ind,]
 str(nepal.df1)
 
 #Regression model
-model <- lm(new_cases ~ poly(new_tests,3), data = nepal.df1)
+model <- lm(new_cases ~ poly(new_tests,2) + stringency_index, data = nepal.df1)
 summary(model)
 
-# residplot <- function(fit, nbreaks=10) {
-#   z <- rstudent(fit)
-#   hist(z, breaks=nbreaks, freq=FALSE,
-#        xlab="Studentized Residual",
-#        main="Distribution of Errors")
-#   rug(jitter(z), col="brown")
-#   curve(dnorm(x, mean=mean(z), sd=sd(z)),
-#         add=TRUE, col="blue", lwd=2)
-#   lines(density(z)$x, density(z)$y,
-#         col="red", lwd=2, lty=2)
-#   legend("topright",
-#          legend = c( "Normal Curve", "Kernel Density Curve"),
-#          lty=1:2, col=c("blue","red"), cex=.7)
-# }
-# 
-# residplot(model)
+residplot <- function(fit, nbreaks=15) {
+  z <- rstudent(fit)
+  hist(z, breaks=nbreaks, freq=FALSE,
+       xlab="Studentized Residual",
+       main="Distribution of Errors")
+  rug(jitter(z), col="brown")
+  curve(dnorm(x, mean=mean(z), sd=sd(z)),
+        add=TRUE, col="blue", lwd=2)
+  lines(density(z)$x, density(z)$y,
+        col="red", lwd=2, lty=2)
+  legend("topright",
+         legend = c( "Normal Curve", "Kernel Density Curve"),
+         lty=1:2, col=c("blue","red"), cex=.7)
+}
+
+residplot(model)
 # pg 200
 
-effect_plot(model, pred = new_tests, interval = T, plot.points = T)
+effect_plot(model, pred = new_tests, interval = T, plot.points = T, line.colors = "#4669E8")
 #https://cran.r-project.org/web/packages/jtools/vignettes/effect_plot.html
 #https://stats.stackexchange.com/questions/233007/interpreting-effects-plots-in-r
