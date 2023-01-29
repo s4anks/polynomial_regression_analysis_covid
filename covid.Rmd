@@ -77,7 +77,7 @@ library(naniar)
 library(plotly)
 library(data.table)           #for fread()
 library(plyr)
-library(scales)
+library(scales)               #to overrride the default breaks, labels
 library(cowplot)
 library(lubridate)
 library(crosstable)
@@ -91,6 +91,7 @@ library(jtools)               #for effect_plot()
 ```
 
 # **1. About COVID dataset**
+This COVID dataset is obtained from [_Our World in Data_](https://github.com/owid/covid-19-data) github repository. They continuously update the COVID dataset. This dataset contains 67 variables and 253472 observations but I will be only using few of the variables for the analysis.
 ```{r, warning = FALSE, class.source="bg-danger", class.output="bg-success"}
 covid.data <- fread("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
 
@@ -99,6 +100,7 @@ str(covid.data)
 
 # **2. Data Cleaning**
 ## **2.1 Missing Data?**
+I used `naniar` package `gg_miss_var()` function to visualize the missing data in whole dataframe.
 ```{r, warning = FALSE, class.source="bg-danger", class.output="bg-success"}
 #checking if there are missing data
 gg_miss_var(covid.data)
@@ -106,7 +108,7 @@ gg_miss_var(covid.data)
 
 
 ## **2.2 Treating the missing data**
-Since I won't be using all the variables in the dataset, I will be only replacing the missing values of certain variables.
+Missing data cannot be neglected. Hence, I replaced the missing data with 0 and mean of respective variables. Since, I won't use all the variables, I only replace the missing data in variables that I am likely to use in further steps. For the variables of which missing data to be replaced with 0, I replaced the NAs directly without using `group_by(location)` while for other of which NAs to be replaced with mean, I used `group_by(location)` first.    
 ```{r, warning = FALSE, class.source="bg-danger", class.output="bg-success"}
 covid.data1 <- covid.data %>%
   mutate_at(vars(new_cases, total_cases, new_deaths, total_deaths, tests_per_case, new_tests, reproduction_rate, icu_patients, hosp_patients, people_fully_vaccinated),
@@ -133,6 +135,7 @@ covid.data1$date <- as.Date(covid.data1$date, format = "%Y-%m-%d")
 ```
 
 ## **2.4 Cleaning continent and location column**
+While looking at the dataset, I found out that the **location** column has continents also which must be removed.
 ```{r, warning=FALSE, class.source="bg-danger", class.output="bg-success"}
 #Removing continents from country column
 continents <- c("Asia", "Africa", "European Union", "Europe", "High income", "Lower middle income", "Low Income", "Upper middle income", 'Oceania', "South America", "North America", "International", "World")
@@ -325,7 +328,7 @@ month.df <- year.month %>%
 month.df$Month <- factor(month.df$Month, levels=c("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"))
 
 p3<-ggplot(month.df, aes(x = Month, y = total.cases, fill = continent)) +
-  geom_col(position = "dodge") +
+  geom_col(position = "dodge", color = "black") +
   # facet_wrap(~continent) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust=0.2),
@@ -562,4 +565,60 @@ p10 <- covid.nepal1 %>%
   annotate(geom="point", x=as.Date("2021-05-24"), y=189, size=6, shape=21, fill="transparent")
 
 p10
+```
+
+## **4.3 Polynomial Regression of new covid cases in Nepal**
+```{r, warning=FALSE, fig.dim=c(5,5), class.source="bg-danger", class.output="bg-success", message=FALSE}
+nepal.df <- covid %>%
+  filter(location == "Nepal") %>%
+  select(new_tests, new_cases, stringency_index)
+plot(nepal.df$new_tests, nepal.df$new_cases)
+```
+
+This plot shows that **new_tests** and **new_cases** have strong positive correlation. But it seems **new_tests** has few outliers which can be removed before fitting a polynomial regression model.
+
+```{r, warning=FALSE, fig.dim=c(5,5), class.source="bg-danger", class.output="bg-success", message=FALSE}
+#Identifying the outliers position in new_tests
+boxplot(nepal.df$new_tests)
+out <- boxplot.stats(nepal.df$new_tests)$out
+out_ind <- which(nepal.df$new_tests %in% c(out))
+#Removing the outliers
+nepal.df1 <- nepal.df[-out_ind,]
+```
+
+```{r, warning=FALSE, fig.dim=c(6,5), class.source="bg-danger", class.output="bg-success", message=FALSE}
+#Regression model
+model <- lm(new_cases ~ poly(new_tests,2) + stringency_index, data = nepal.df1)
+summary(model)
+```
+
+* Both independent variables *new_tests* and *stringency_index* have significant impact on *new_cases* at all level of significance.
+* The polynomial regression model is \(Y = 303.967 + 35187.011X_1 + 24672.382{X_1}^2 + 11.814X_2 + Error\).
+
+  Here \(X_1\) is new_tests and \(X_2\) is stringency index. <br>
+* Adjusted R-squared is 72.3% indicating that these two predictor variables result in 72.3% variance in the dependent variable i.e., new_cases and rest 27.7% by other factors not in this regression model.
+
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+residplot <- function(fit, nbreaks=15) {
+  z <- rstudent(fit)
+  hist(z, breaks=nbreaks, freq=FALSE,
+       xlab="Studentized Residual",
+       main="Distribution of Errors")
+  rug(jitter(z), col="brown")
+  curve(dnorm(x, mean=mean(z), sd=sd(z)),
+        add=TRUE, col="blue", lwd=2)
+  lines(density(z)$x, density(z)$y,
+        col="red", lwd=2, lty=2)
+  legend("topright",
+         legend = c( "Normal Curve", "Kernel Density Curve"),
+         lty=1:2, col=c("blue","red"), cex=.7)
+}
+```
+
+```{r, warning=FALSE, fig.dim=c(5,5), class.source="bg-danger", class.output="bg-success", message=FALSE}
+residplot(model)
+```
+
+```{r, warning=FALSE, fig.dim=c(5,5), class.source="bg-danger", class.output="bg-success", message=FALSE}
+effect_plot(model, pred = new_tests, interval = T, plot.points = T, line.colors = "#4669E8")
 ```
