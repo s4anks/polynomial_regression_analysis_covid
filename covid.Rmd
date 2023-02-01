@@ -187,8 +187,16 @@ covid_summary_statistics %>%
   )
 ```
 
-## **3.2 Heatmaps** {.tabset}
-### **3.2.1 Heatmap of total COVID infections**
+## **3.2 Descriptive Statistics**
+```{r, class.source = "bg-danger", class.output = "bg-success", warning = FALSE}
+descriptive.stat <- covid %>%
+  select(new_cases, new_deaths, total_deaths, total_cases, tests_per_case)
+
+summary(descriptive.stat)
+```
+
+## **3.3 Heatmaps** {.tabset}
+### **3.3.1 Heatmap of total COVID infections**
 ```{r, warning=FALSE, fig.align="center", fig.dim=c(7,6), class.source="bg-danger", class.output="bg-success"}
 #latest day
 day_latest <- max(covid$date)
@@ -227,7 +235,7 @@ plot_geo() %>%
             marker = list(line = line))
 ```
 
-### **3.2.2 Heatmap of total COVID deaths**
+### **3.3.2 Heatmap of total COVID deaths**
 ```{r, warning=FALSE, fig.dim=c(7,6), class.source="bg-danger", class.output="bg-success"}
 ##Heatmap for covid deaths
 plot_geo() %>%
@@ -242,7 +250,7 @@ plot_geo() %>%
             marker = list(line = line))
 ```
 
-## **3.3 Trend of total COVID cases and deaths**
+## **3.4 Trend of total COVID cases and deaths**
 ```{r, warning=FALSE, fig.dim=c(7,6), class.source="bg-danger", class.output="bg-success"}
 #Trend of world covid cases and deaths
 covid %>%
@@ -270,8 +278,8 @@ covid %>%
   annotate("text", x = as.Date("2021-05-05"), y = 50000000, label = "Total Cases \n", size = 4.2)
 ```
 
-## **3.4 Trend of new COVID cases and deaths** {.tabset}
-### **3.4.1 Trend of new COVID cases**
+## **3.5 Trend of new COVID cases and deaths** {.tabset}
+### **3.5.1 Trend of new COVID cases**
 ```{r, warning=FALSE, fig.dim=c(7,6), class.source="bg-danger", class.output="bg-success"}
 p1 <- covid %>%
   group_by(date, continent) %>%
@@ -294,7 +302,7 @@ p1 <- covid %>%
 p1
 ```
 
-### **3.4.2 Trend of new COVID deaths**
+### **3.5.2 Trend of new COVID deaths**
 ```{r, warning=FALSE, fig.dim=c(7,6), class.source="bg-danger", class.output="bg-success", message=FALSE}
 p2 <- covid %>%
   group_by(date, continent) %>%
@@ -317,7 +325,7 @@ p2 <- covid %>%
 p2
 ```
 
-## **3.4 COVID cases in different months in different continents**
+## **3.6 COVID cases in different months in different continents**
 ```{r, warning=FALSE, fig.dim=c(7,8), class.source="bg-danger", class.output="bg-success", message=FALSE}
 #COVID cases by months
 month.df <- year.month %>%
@@ -344,8 +352,8 @@ p3<-ggplot(month.df, aes(x = Month, y = total.cases, fill = continent)) +
 ggplotly(p3)
 ```
 
-## **3.5 Countries with most COVID cases and deaths** {.tabset}
-### **3.5.1 Top Ten countries with most COVID infections**
+## **3.7 Countries with most COVID cases and deaths** {.tabset}
+### **3.7.1 Top Ten countries with most COVID infections**
 ```{r, warning=FALSE, fig.dim=c(10,5), class.source="bg-danger", class.output="bg-success", message=FALSE}
 top.10.covid.countries <- covid %>%
   select(location, new_cases, date) %>%
@@ -371,7 +379,7 @@ p4 <- top.10.covid.countries %>%
 p4
 ```
 
-### **3.5.2 Top Ten countries with most COVID deaths**
+### **3.7.2 Top Ten countries with most COVID deaths**
 ```{r, warning=FALSE, fig.dim=c(10,5), class.source="bg-danger", class.output="bg-success", message=FALSE}
 top.10.covid.deaths.countries <- covid %>%
   select(date, location, new_deaths) %>%
@@ -394,14 +402,14 @@ p5 <- top.10.covid.deaths.countries %>%
 p5
 ```
 
-## **3.6 Bubble Charts** {.tabset}
-### **3.6.1 Bubble chart of total COVID cases of different countries**
+## **3.8 Bubble Charts** {.tabset}
+### **3.8.1 Bubble chart of total COVID cases of different countries**
 ```{r, warning=FALSE, fig.dim=c(8,6), class.source="bg-danger", class.output="bg-success", message=FALSE}
 p6 <- covid %>%
   filter(date == max(day_latest - 1)) %>%
-  select(total_cases, human_development_index, location, continent) %>%
+  select(total_cases, human_development_index, location, continent, population) %>%
   mutate(location = factor(location)) %>%
-  ggplot(aes(human_development_index, total_cases/1000, size = total_cases, color = continent)) +
+  ggplot(aes(human_development_index, total_cases/1000, size = population, color = continent)) +
   geom_point(aes(text = location), alpha = 0.5) +
   scale_size(range=c(1,10), name = "") +
   theme_bw() +
@@ -414,17 +422,21 @@ ggplotly(p6, tooltip = c("text", "total_cases", "human_development_index")) %>%
   layout(title = list(text = paste0('Total Covid cases in different countries',
                                     '<br>',
                                     '<sup>',
-                                    'Size of scatter plot denotes the covid cases','</sup>')),
+                                    'Size of bubble denotes the population','</sup>')),
          margin = list(t = 70))
 ```
 
-### **3.6.2 Bubble chart of total COVID deaths of different countries**
+* United States of America has the highest COVID infections.
+* Most of the countries with high COVID cases are European nations with few Asian.
+* The bubble chart shows that countries which score high in HDI have more covid cases than compared countries which score low in HDI. This may be because of the large number of travels by people to and from these countries i.e. countries with high HDI. 
+
+### **3.8.2 Bubble chart of total COVID deaths of different countries**
 ```{r, warning=FALSE, fig.dim=c(8,6), class.source="bg-danger", class.output="bg-success", message=FALSE}
 p7 <- covid %>%
   filter(date == max(day_latest - 1)) %>%
-  select(total_deaths, human_development_index, location, continent) %>%
+  select(total_deaths, human_development_index, location, continent, population) %>%
   mutate(location = factor(location)) %>%
-  ggplot(aes(human_development_index, total_deaths/1000, size = total_deaths, color = continent)) +
+  ggplot(aes(human_development_index, total_deaths/1000, size = population, color = continent)) +
   geom_point(aes(text = location), alpha = 0.5) +
   scale_size(range=c(1,10), name = "") +
   theme_bw() +
@@ -441,7 +453,10 @@ ggplotly(p7, tooltip = c("text", "total_deaths", "human_development_index")) %>%
          margin = list(t = 70))
 ```
 
-### **3.6.2 Bubble chart of COVID infection fatality rate of different countries**
+* The highest COVID related deaths is in US followed by Brazil.
+* The COVID related deaths is high in countries with high HDI.This is either due to (i) high COVID cases in those countries, (ii) large number of old age people (iii) large number of people with chronic health condition in those countries.
+
+### **3.8.3 Bubble chart of COVID infection fatality rate of different countries**
 ```{r, warning=FALSE, fig.dim=c(8,6), class.source="bg-danger", class.output="bg-success", message=FALSE}
 p8 <- covid %>%
   filter(date == max(day_latest - 1),
@@ -467,7 +482,7 @@ ggplotly(p8, tooltip = "all") %>%
          margin = list(t = 100))
 ```
 
-## **3.7 Correlation Matrix**
+## **3.9 Correlation Matrix**
 ```{r, warning=FALSE, fig.dim=c(6,6), class.source="bg-danger", class.output="bg-success", message=FALSE}
 covid.data.corr <- covid %>%
   select(new_cases, new_deaths, tests_per_case, new_tests, reproduction_rate, icu_patients, hosp_patients, human_development_index, gdp_per_capita, extreme_poverty, male_smokers, female_smokers, handwashing_facilities)
