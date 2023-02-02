@@ -12,13 +12,7 @@ author: |
   | Kathmandu University School of Management
   | Balkumari, Lalitpur
 date: "`r Sys.Date()`"
-output:
-  html_document:
-    number_sections: no
-    toc: yes
-    toc_float: yes
-    fontsize: 14 pt
-  mainfont: Times New Roman
+output: rmdformats::readthedown
 ---
 <style type="text/css">
 
